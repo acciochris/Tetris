@@ -4,9 +4,11 @@ import time
 import sys
 import collections
 import asyncio
+import itertools
 
 colors = ["red","green","blue","yellow"]
-current_block = None
+left_current_block = None
+right_current_block = None
 
 class Blocks:
     def __init__(self, filename):
@@ -26,16 +28,13 @@ class Blocks:
         return block
 
 class Block:
-    def __init__(self,shape,x,y,canvas,color):
+    def __init__(self,shape,color):
         self.shape = shape
-        self.x = x
-        self.y = y
-        self.canvas = canvas
         self.color = color
     
                     
 class Game:
-    def __init__(self):
+    def __init__(self,blocks):
         self.tk = AsyncTk()
         self.tk.title("Tetris")
         self.tk.resizable(0, 0)
@@ -46,6 +45,7 @@ class Game:
         self.canvas_height = 400
         self.canvas_width = 1500
         self.running = True
+        self.blocks = blocks
         # create windows
         # bind start and stop
         self.tk.bind("<Return>",self.start)
@@ -73,8 +73,33 @@ class Player:
         pass
     def drop_to_bottom(self,evt):
         pass
-    def show_next_block(self):
-        pass
+    async def show_next_block(self):
+        ids = []
+        #print("1111")
+        if self.window == "left":
+            print("left")
+            for a in range(len(left_current_block.shape)):
+                for b in range(len(left_current_block.shape[a])):
+                    if left_current_block.shape[a][b] == '1':
+                        x1 = 530+b*45
+                        y1 = 110+a*45
+                        x2 = x1 + 45
+                        y2 = y1 + 45
+                        print(x1,x2,y1,y2)
+                        id = await canvas.create_rectangle(x1,y1,x2,y2,fill=left_current_block.color)
+                        ids.append(id)
+        elif self.window == "right":
+            for a in range(len(right_current_block.shape)):
+                for b in range(len(right_current_block.shape[a])):
+                    if right_current_block.shape[a][b] == '1':
+                        x1 = 775+b*45
+                        y1 = 110+a*45
+                        x2 = x1 + 45
+                        y2 = y1 + 45
+                        id = await canvas.create_rectangle(x1,y1,x2,y2,fill=right_current_block.color)
+                        ids.append(id)
+        return ids
+
     def drop(self):
         pass
 
@@ -105,22 +130,39 @@ class Player2(Player):
 def clear_full_row():
     pass
 
-async def draw_windows(game):
-    await game.canvas.create_rectangle(50,50,500,950)
-    await game.canvas.create_rectangle(1000,50,1450,950)
-    await game.canvas.create_rectangle(515,50,740,275)
-    await game.canvas.create_rectangle(760,50,985,275)
-    await game.canvas.create_rectangle(515,300,740,450)
-    await game.canvas.create_rectangle(760,300,985,450)
+async def draw_windows():
+    # main windows
+    await canvas.create_rectangle(50,50,500,950)
+    await canvas.create_rectangle(1000,50,1450,950)
+    # next blocks
+    await canvas.create_rectangle(515,50,740,275)
+    await canvas.create_rectangle(760,50,985,275)
+    # line windows
+    await canvas.create_rectangle(515,300,740,450)
+    await canvas.create_rectangle(760,300,985,450)
 
 async def player1(name,game):
     player1 = Player1(player1_name,game.canvas)
-    await asyncio.sleep(5)
+    for color in itertools.cycle(colors):
+        shape = game.blocks.pick()
+        global left_current_block
+        left_current_block = Block(shape,color)
+        print(left_current_block.shape)
+        ids = await player1.show_next_block()
+        await asyncio.sleep(5)
+        game.canvas.delete(*ids)
 
 async def player2(name,game):
+    print("player2")
     player2 = Player2(player2_name,game.canvas)
-    await asyncio.sleep(5)
-    loop.stop()
+    for color in itertools.cycle(colors):
+        shape = game.blocks.pick()
+        global right_current_block
+        right_current_block = Block(shape,color)
+        ids = await player2.show_next_block()
+        await asyncio.sleep(5)
+        game.canvas.delete(*ids)
+
 
 async def update(game):
     while True:
@@ -129,11 +171,15 @@ async def update(game):
         await asyncio.sleep(0.01)
 
 if __name__ =="__main__":
-    g = Game()
+    blocks = Blocks("blocks.dat")
+    g = Game(blocks)
+    canvas = g.canvas
     player1_name = sys.argv[1]
     player2_name = sys.argv[2]
+    player = Player2(player2_name,g.canvas)
+    print(player.window)
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(draw_windows(g))
+    loop.run_until_complete(draw_windows())
     loop.create_task(player1(player1_name,g))
     loop.create_task(player2(player2_name,g))
     loop.create_task(update(g))
