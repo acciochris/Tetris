@@ -66,7 +66,7 @@ class Player:
         self.name = name
         self.lines = 0
         self.dropping = True
-        self.speed = 1
+        self.speed = 0.5
         self.x = 0
         self.rotate = 0
         self.fall = 0
@@ -91,7 +91,7 @@ class Player:
                     await self.move()
                     windows[self.window].update(self.final_pos)
                     self.clear_full_row()
-                    await asyncio.sleep(5)
+                    # await asyncio.sleep(5)
             else:
                 if not text:
                     text = await canvas.create_text(700,500,text="Press Enter to start\nPress Esc to exit/pause game",font=("Calibri",50))
@@ -116,6 +116,7 @@ class Player:
         raw_ids = []
         ids = []
         # draw the block
+        current_ids[self.window] = []
         for a in range(len(current_blocks[self.window].shape)):
             for b in range(len(current_blocks[self.window].shape[a])):
                 if current_blocks[self.window].shape[a][b]:
@@ -129,7 +130,7 @@ class Player:
                         (b+x,a+y))
                     current_ids[self.window].append(id)
         self.dropping = True
-        self.speed = 1
+        self.speed = 0.5
         while self.dropping:
             if self.x == 1:
                 self.x = 0
