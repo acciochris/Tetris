@@ -153,7 +153,10 @@ class Player:
                             (b+x,a+y))
                         current_ids[self.window].append(id)
         self.dropping = True
-        self.speed = 0.5
+        if 0.5-self.lines*0.005 > 0.05:
+            self.speed = 0.5-self.lines*0.005
+        else:
+            self.speed = 0.05
         while self.dropping:
             if self.x == 1:
                 self.x = 0
@@ -180,7 +183,7 @@ class Player:
 
             if self.fall == 1:
                 self.fall = 0
-                # fall quickly (sleep for 0.005s)
+                # fall quickly (sleep for 0.001s)
                 self.speed = 0.001
             
             if self.rotate == 1:
@@ -331,11 +334,11 @@ async def decide_winner():
                 winner = player1.name if scores[0] > scores[1] else player2.name
             text = await canvas.create_text(700,500,text=msg.format(winner),font=("Calibri",50))
             game.running = False
-            await asyncio.sleep(3)
+            await asyncio.sleep(10)
             loop.stop()
             sys.exit(0)
 
-        await asyncio.sleep(0.005)
+        await asyncio.sleep(0.02)
 
 if __name__ =="__main__":
     if len(sys.argv) != 3:
