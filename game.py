@@ -115,6 +115,7 @@ class Player:
         global current_ids, current_blocks
         raw_ids = []
         ids = []
+        tmp_ids = []
         # draw the block
         current_ids[self.window] = []
         for a in range(len(current_blocks[self.window].shape)):
@@ -135,29 +136,43 @@ class Player:
             if self.x == 1:
                 self.x = 0
                 for id, (x,y) in current_ids[self.window]:
-                    if x + 1 > 9 or windows[self.window].get((x+1,y)):
+                    if (x + 1 > 9) or windows[self.window].get((x+1,y)):
                         break
                 else:
+                    tmp_ids = []
                     for id, (x,y) in current_ids[self.window]:
                         canvas.move(id,45,0)
+                        tmp_ids.append((id,(x+1,y)))
+                    current_ids[self.window] = tmp_ids
             if self.x == -1:
                 self.x = 0
                 for id, (x,y) in current_ids[self.window]:
                     if x - 1 < 0 or windows[self.window].get((x-1,y)):
                         break
                 else:
+                    tmp_ids = []
                     for id, (x,y) in current_ids[self.window]:
                         canvas.move(id,-45,0)
+                        tmp_ids.append((id,(x-1,y)))
+                    current_ids[self.window] = tmp_ids
+
             if self.fall == 1:
                 self.fall = 0
-                # fall quickly (sleep for 0.01s)
-                self.speed = 0.01
+                # fall quickly (sleep for 0.005s)
+                self.speed = 0.001
+            
             if self.rotate == 1:
                 self.rotate = 0
-                ref = current_ids[0][1]
+                # print(current_ids[self.window])
+                ref = current_ids[self.window][0][1]
+                # print(ref)
+                
+                # Calculate the new position based on the reference point
                 x_dist = -ref[1]-1-ref[0]
                 y_dist = ref[0]-ref[1]
-                for id, (x,y) in current_ids:
+                # Recalculate all points to real position
+                raw_ids = []
+                for id, (x,y) in current_ids[self.window]:
                     # clockwise rotation
                     new_x = -y-1-x_dist
                     new_y = x-y_dist
@@ -167,20 +182,29 @@ class Player:
                 xs = [x for id, (x,y) in raw_ids]
                 ys = [y for id, (x,y) in raw_ids]
                 if min(xs) < 0:
-                    new_xs = [x-min(xs) for x in xs]
+                    xs = [x-min(xs) for x in xs]
                 if max(xs) > 9:
-                    new_xs = [x-max(xs)+9 for x in xs]
+                    xs = [x-max(xs)+9 for x in xs]
                 if min(ys) < 0:
-                    new_ys = [y-min(ys) for y in ys]
+                    ys = [y-min(ys) for y in ys]
                 if max(xs) > 19:
-                    new_ys = [y-max(ys)+19 for y in ys]
-                final_ids = zip(ids,zip(xs,ys))
-                for id, (x,y) in final_ids:
+                    ys = [y-max(ys)+19 for y in ys]
+                # print(list(final_ids))
+                # Detect if current block collides with other blocks
+                for id, x, y in zip(ids,xs,ys):
                     if windows[self.window].get((x,y)):
                         break
                 else:
-                    for id, (x,y) in final_ids:
-                        canvas.moveto(id,self.main_window_offset[self.window][0]+x*45,self.main_window_offset[self.window][1]+y*45)
+                    tmp_ids = []
+                    for id, x, y in zip(ids,xs,ys):
+                        # print(id,x,y)
+                        canvas.moveto(id,\
+                            self.main_window_offset[self.window][0]+x*45,\
+                            self.main_window_offset[self.window][1]+y*45)
+                        tmp_ids.append((id,(x,y)))
+                    print(tmp_ids)
+                    print("-----")
+                    current_ids[self.window] = tmp_ids
             await asyncio.sleep(0.01)
 
     async def drop(self):
@@ -189,7 +213,8 @@ class Player:
             if game.running and current_ids[self.window] and self.dropping:
                 await asyncio.sleep(self.speed)
                 for id, (x,y) in current_ids[self.window]:
-                    print(y, end=" ")
+                    # await asyncio.sleep(0.01)
+                    # print(y, end=" ")
                     # check if hit bottom
                     if windows[self.window].get((x,y+1)) or y == 19:
                         self.dropping = False
@@ -200,7 +225,7 @@ class Player:
                     for id, (x,y) in current_ids[self.window]:
                         canvas.move(id,0,45)
                     current_ids[self.window] = [(id,(x,y+1)) for (id,(x,y)) in current_ids[self.window]]
-                print(self.window)
+                # print(self.window)
             else:
                 await asyncio.sleep(0.01)
 
@@ -223,20 +248,30 @@ class Player:
         y_values = [y for (x,y) in xy]
         counter = collections.Counter(y_values)
         print(counter)
+        tmp_window = {}
         # collect all lines that need to be deleted
         for line in counter.keys():
             if counter[line] == 10:
                 deleted_lines.append(line)
         deleted_lines = sorted(deleted_lines)
-        # delete squares as needed and move the rest down
+        print(deleted_lines)
+        # print(windows[self.window])
         for line in deleted_lines:
-            for x, y in xy:
-                id = windows[self.window].get(x,y)
+            tmp_window = {}
+            for (x,y),id in windows[self.window].items():
+                # Delete the line
                 if y == line:
+                    # print(id)
                     canvas.delete(id)
+                # Move the lines above down
                 elif y < line:
                     canvas.move(id,0,45)
-    
+                    tmp_window[(x,y+1)] = id
+                # Do nothing for lines below
+                else:
+                    tmp_window[(x,y)] = id
+            windows[self.window] = tmp_window
+
 class Player1(Player):
     window = LEFT
 
