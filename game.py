@@ -13,6 +13,9 @@ LEFT = 0
 RIGHT = 1
 Block = collections.namedtuple("Block","shape color")
 windows = [{},{}]
+scores = [0,0]
+done = [False,False]
+text = None
 
 class Blocks:
     def __init__(self):
@@ -46,7 +49,16 @@ class Game:
         self.tk.bind("<Escape>",self.stop)
 
     def start(self,evt):
+        global text,current_blocks,current_ids,windows,scores
         self.running = True
+        self.canvas.delete(text)
+        self.canvas.delete(*windows[0].values())
+        self.canvas.delete(*windows[1].values())
+        current_blocks = [None,None]
+        current_ids = [[],[]]
+        windows = [{},{}]
+        scores = [0,0]
+        text = None
 
     def stop(self,evt):
         if self.running:
@@ -59,6 +71,7 @@ class Player:
     window = None
     small_window_offset = ((530,110),(775,110))
     main_window_offset = ((50,50),(1000,50))
+    score_window_offset = ((627,337),(872,337))
     def __init__(self,name):
         self.bind_keys = (("<w>","<a>","<s>","<d>"), \
         ("<KeyPress-Up>","<KeyPress-Left>","<KeyPress-Down>","<KeyPress-Right>"))
@@ -75,13 +88,20 @@ class Player:
             canvas.bind_all(key,func)
 
     async def play(self):
-        text = None
-        global current_blocks,colors
+        global text
+        offset = self.score_window_offset[self.window]
+        global current_blocks, colors, scores, done
+
+        await canvas.create_text(*self.score_window_offset[self.window],\
+            text=self.name,font=("Calibri",35))
+        self.score = await canvas.create_text(offset[0],offset[1]+75,\
+            text="0",font=("Calibri",35))
+        await self.show_score()
         shape = game.blocks.pick()
         next_block = Block(shape,colors[-1])
         ids = await self.show_next_block(next_block)
         while True:
-            if game.running:
+            if game.running and (not done[self.window]):
                 for color in itertools.cycle(colors):
                     current_blocks[self.window] = next_block
                     game.canvas.delete(*ids)
@@ -91,11 +111,18 @@ class Player:
                     await self.move()
                     windows[self.window].update(self.final_pos)
                     self.clear_full_row()
-                    # await asyncio.sleep(5)
+                    await self.show_score()
+                    status = self.check()
+                    if status:
+                        canvas.delete(*ids)
+                        self.lines = 0
+                        done[self.window] = True
+            elif done[self.window]:
+                await asyncio.sleep(0.005)
             else:
                 if not text:
                     text = await canvas.create_text(700,500,text="Press Enter to start\nPress Esc to exit/pause game",font=("Calibri",50))
-                await asyncio.sleep(0.01)
+                await asyncio.sleep(0.005)
 
     async def show_next_block(self,next_block):
         ids = []
@@ -118,18 +145,19 @@ class Player:
         tmp_ids = []
         # draw the block
         current_ids[self.window] = []
-        for a in range(len(current_blocks[self.window].shape)):
-            for b in range(len(current_blocks[self.window].shape[a])):
-                if current_blocks[self.window].shape[a][b]:
-                    x = 3
-                    y = 0
-                    x1 = self.main_window_offset[self.window][0] + b*45 + x*45
-                    y1 = self.main_window_offset[self.window][1] + a*45 + y*45
-                    x2 = x1 + 45
-                    y2 = y1 + 45
-                    id = (await canvas.create_rectangle(x1,y1,x2,y2,fill=current_blocks[self.window].color), \
-                        (b+x,a+y))
-                    current_ids[self.window].append(id)
+        if game.running and (not done[self.window]):
+            for a in range(len(current_blocks[self.window].shape)):
+                for b in range(len(current_blocks[self.window].shape[a])):
+                    if current_blocks[self.window].shape[a][b]:
+                        x = 3
+                        y = 0
+                        x1 = self.main_window_offset[self.window][0] + b*45 + x*45
+                        y1 = self.main_window_offset[self.window][1] + a*45 + y*45
+                        x2 = x1 + 45
+                        y2 = y1 + 45
+                        id = (await canvas.create_rectangle(x1,y1,x2,y2,fill=current_blocks[self.window].color), \
+                            (b+x,a+y))
+                        current_ids[self.window].append(id)
         self.dropping = True
         self.speed = 0.5
         while self.dropping:
@@ -163,9 +191,7 @@ class Player:
             
             if self.rotate == 1:
                 self.rotate = 0
-                # print(current_ids[self.window])
                 ref = current_ids[self.window][0][1]
-                # print(ref)
                 
                 # Calculate the new position based on the reference point
                 x_dist = -ref[1]-1-ref[0]
@@ -189,7 +215,6 @@ class Player:
                     ys = [y-min(ys) for y in ys]
                 if max(xs) > 19:
                     ys = [y-max(ys)+19 for y in ys]
-                # print(list(final_ids))
                 # Detect if current block collides with other blocks
                 for id, x, y in zip(ids,xs,ys):
                     if windows[self.window].get((x,y)):
@@ -197,15 +222,12 @@ class Player:
                 else:
                     tmp_ids = []
                     for id, x, y in zip(ids,xs,ys):
-                        # print(id,x,y)
                         canvas.moveto(id,\
                             self.main_window_offset[self.window][0]+x*45,\
                             self.main_window_offset[self.window][1]+y*45)
                         tmp_ids.append((id,(x,y)))
-                    print(tmp_ids)
-                    print("-----")
                     current_ids[self.window] = tmp_ids
-            await asyncio.sleep(0.01)
+            await asyncio.sleep(0.005)
 
     async def drop(self):
         global current_ids, windows
@@ -214,7 +236,6 @@ class Player:
                 await asyncio.sleep(self.speed)
                 for id, (x,y) in current_ids[self.window]:
                     # await asyncio.sleep(0.01)
-                    # print(y, end=" ")
                     # check if hit bottom
                     if windows[self.window].get((x,y+1)) or y == 19:
                         self.dropping = False
@@ -225,7 +246,6 @@ class Player:
                     for id, (x,y) in current_ids[self.window]:
                         canvas.move(id,0,45)
                     current_ids[self.window] = [(id,(x,y+1)) for (id,(x,y)) in current_ids[self.window]]
-                # print(self.window)
             else:
                 await asyncio.sleep(0.01)
 
@@ -242,26 +262,25 @@ class Player:
         self.fall = 1
 
     def clear_full_row(self):
-        global windows
+        global windows, scores
         deleted_lines = []
         xy = windows[self.window].keys()
         y_values = [y for (x,y) in xy]
         counter = collections.Counter(y_values)
-        print(counter)
         tmp_window = {}
         # collect all lines that need to be deleted
         for line in counter.keys():
             if counter[line] == 10:
                 deleted_lines.append(line)
         deleted_lines = sorted(deleted_lines)
-        print(deleted_lines)
-        # print(windows[self.window])
+        length = len(deleted_lines)
+        self.lines += int(length*(length+1)/2)
+        scores[self.window] = self.lines
         for line in deleted_lines:
             tmp_window = {}
             for (x,y),id in windows[self.window].items():
                 # Delete the line
                 if y == line:
-                    # print(id)
                     canvas.delete(id)
                 # Move the lines above down
                 elif y < line:
@@ -271,6 +290,18 @@ class Player:
                 else:
                     tmp_window[(x,y)] = id
             windows[self.window] = tmp_window
+    
+    async def show_score(self):
+        canvas.delete(self.score)
+        offset = self.score_window_offset[self.window]
+        self.score = await canvas.create_text(offset[0],offset[1]+75,\
+            text=str(self.lines),font=("Calibri",35))
+    
+    def check(self):
+        for x, y in windows[self.window].keys():
+            if y == 0:
+                return True
+        return False
 
 class Player1(Player):
     window = LEFT
@@ -295,6 +326,20 @@ async def update():
         game.tk.update()
         await asyncio.sleep(0.01)
 
+async def decide_winner():
+    global text, done
+    while True:
+        if all(done):
+            msg = "{} has won!\nPress Enter to start\nPress Esc to exit/pause game"
+            if scores[0] == scores[1]:
+                winner = "Nobody"
+            else:
+                winner = player1.name if scores[0] > scores[1] else player2.name
+            text = await canvas.create_text(700,500,text=msg.format(winner),font=("Calibri",50))
+            game.running = False
+            done = [False,False]
+        await asyncio.sleep(0.005)
+
 if __name__ =="__main__":
     if len(sys.argv) != 3:
         print("Usage:python game.py player1_name player2_name")
@@ -313,9 +358,5 @@ if __name__ =="__main__":
     loop.create_task(player1.drop())
     loop.create_task(player2.drop())
     loop.create_task(update())
+    loop.create_task(decide_winner())
     loop.run_forever()
-
-#a = Blocks("blocks.dat")
-#print(a.blocks)
-#for i in range(10):
-#    print(a.pick())
