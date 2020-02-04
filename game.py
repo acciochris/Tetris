@@ -52,12 +52,6 @@ class Game:
         global text,current_blocks,current_ids,windows,scores
         self.running = True
         self.canvas.delete(text)
-        self.canvas.delete(*windows[0].values())
-        self.canvas.delete(*windows[1].values())
-        current_blocks = [None,None]
-        current_ids = [[],[]]
-        windows = [{},{}]
-        scores = [0,0]
         text = None
 
     def stop(self,evt):
@@ -330,14 +324,17 @@ async def decide_winner():
     global text, done
     while True:
         if all(done):
-            msg = "{} has won!\nPress Enter to start\nPress Esc to exit/pause game"
+            msg = "{} has won!"
             if scores[0] == scores[1]:
                 winner = "Nobody"
             else:
                 winner = player1.name if scores[0] > scores[1] else player2.name
             text = await canvas.create_text(700,500,text=msg.format(winner),font=("Calibri",50))
             game.running = False
-            done = [False,False]
+            await asyncio.sleep(3)
+            loop.stop()
+            sys.exit(0)
+
         await asyncio.sleep(0.005)
 
 if __name__ =="__main__":
