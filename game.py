@@ -241,7 +241,7 @@ class Player:
                         canvas.move(id,0,45)
                     current_ids[self.window] = [(id,(x,y+1)) for (id,(x,y)) in current_ids[self.window]]
             else:
-                await asyncio.sleep(0.01)
+                await asyncio.sleep(0.005)
 
     def move_left(self,evt):
         self.x = -1
