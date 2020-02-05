@@ -1,6 +1,6 @@
 from asynctk import *
 from random import randrange
-from sys import argv, exit
+from sys import argv
 from collections import namedtuple, Counter
 from asyncio import sleep, get_event_loop
 from itertools import cycle
@@ -88,9 +88,9 @@ class Player:
         global current_blocks, colors, scores, done
 
         await canvas.create_text(*self.score_window_offset[self.window],\
-            text=self.name,font=("Calibri",35))
+            text=self.name,font=("Calibri",40))
         self.score = await canvas.create_text(offset[0],offset[1]+75,\
-            text="0",font=("Calibri",35))
+            text="0",font=("Calibri",40))
         await self.show_score()
         shape = game.blocks.pick()
         next_block = Block(shape,colors[-1])
@@ -298,7 +298,7 @@ class Player:
         canvas.delete(self.score)
         offset = self.score_window_offset[self.window]
         self.score = await canvas.create_text(offset[0],offset[1]+75,\
-            text=str(self.lines),font=("Calibri",35))
+            text=str(self.lines),font=("Calibri",40))
     
     def check(self):
         for x, y in windows[self.window].keys():
@@ -352,14 +352,11 @@ async def play_music():
         await sleep(245)
 
 if __name__ =="__main__":
-    if len(argv) != 3:
-        print("Usage:python game.py player1_name player2_name")
-        exit(1)
     blocks = Blocks()
     game = Game(blocks)
     canvas = game.canvas
-    name1 = argv[1]
-    name2 = argv[2]
+    name1 = "Left"
+    name2 = "Right"
     player1 = Player1(name1)
     player2 = Player2(name2)
     loop = get_event_loop()
