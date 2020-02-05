@@ -1,17 +1,17 @@
 from asynctk import *
-import random
-import time
-import sys
-import collections
-import asyncio
-import itertools
+from random import randrange
+from sys import argv, exit
+from collections import namedtuple, Counter
+from asyncio import sleep, get_event_loop
+from itertools import cycle
+from playsound import playsound
 
 colors = ["red","green","blue","yellow"]
 current_blocks = [None,None]
 current_ids = [[],[]]
 LEFT = 0
 RIGHT = 1
-Block = collections.namedtuple("Block","shape color")
+Block = namedtuple("Block","shape color")
 windows = [{},{}]
 scores = [0,0]
 done = [False,False]
@@ -28,7 +28,7 @@ class Blocks:
             [[1, 1, 1], [0, 1]]]
 
     def pick(self):
-        block = self.blocks[random.randrange(len(self.blocks))]
+        block = self.blocks[randrange(len(self.blocks))]
         return block
 
 class Game:
@@ -50,16 +50,17 @@ class Game:
 
     def start(self,evt):
         global text,current_blocks,current_ids,windows,scores
+        playsound("sounds/start.mp3",block=False)
         self.running = True
         self.canvas.delete(text)
         text = None
 
     def stop(self,evt):
         if self.running:
+            playsound("sounds/pause.mp3",block=False)
             self.running = False
         else:
             loop.stop()
-            sys.exit(0)
 
 class Player:
     window = None
@@ -96,7 +97,7 @@ class Player:
         ids = await self.show_next_block(next_block)
         while True:
             if game.running and (not done[self.window]):
-                for color in itertools.cycle(colors):
+                for color in cycle(colors):
                     current_blocks[self.window] = next_block
                     game.canvas.delete(*ids)
                     shape = game.blocks.pick()
@@ -108,15 +109,16 @@ class Player:
                     await self.show_score()
                     status = self.check()
                     if status:
+                        playsound("sounds/gameover.mp3",block=False)
                         canvas.delete(*ids)
                         self.lines = 0
                         done[self.window] = True
             elif done[self.window]:
-                await asyncio.sleep(0.005)
+                await sleep(0.005)
             else:
                 if not text:
                     text = await canvas.create_text(700,500,text="Press Enter to start\nPress Esc to exit/pause game",font=("Calibri",50))
-                await asyncio.sleep(0.005)
+                await sleep(0.005)
 
     async def show_next_block(self,next_block):
         ids = []
@@ -153,8 +155,8 @@ class Player:
                             (b+x,a+y))
                         current_ids[self.window].append(id)
         self.dropping = True
-        if 0.5-self.lines*0.005 > 0.05:
-            self.speed = 0.5-self.lines*0.005
+        if 1/(0.1*self.lines+1) > 0.05:
+            self.speed = 1/(0.1*self.lines+1)
         else:
             self.speed = 0.05
         while self.dropping:
@@ -188,6 +190,7 @@ class Player:
             
             if self.rotate == 1:
                 self.rotate = 0
+                playsound("sounds/block-rotate.mp3",block=False)
                 ref = current_ids[self.window][0][1]
                 
                 # Calculate the new position based on the reference point
@@ -224,17 +227,18 @@ class Player:
                             self.main_window_offset[self.window][1]+y*45)
                         tmp_ids.append((id,(x,y)))
                     current_ids[self.window] = tmp_ids
-            await asyncio.sleep(0.005)
+            await sleep(0.005)
 
     async def drop(self):
         global current_ids, windows
         while True:
             if game.running and current_ids[self.window] and self.dropping:
-                await asyncio.sleep(self.speed)
+                await sleep(self.speed)
                 for id, (x,y) in current_ids[self.window]:
-                    # await asyncio.sleep(0.01)
+                    # await sleep(0.01)
                     # check if hit bottom
                     if windows[self.window].get((x,y+1)) or y == 19:
+                        playsound("sounds/drop.mp3",block=False)
                         self.dropping = False
                         self.final_pos = {(x,y):id for (id, (x,y)) in current_ids[self.window]}
                         break
@@ -244,7 +248,7 @@ class Player:
                         canvas.move(id,0,45)
                     current_ids[self.window] = [(id,(x,y+1)) for (id,(x,y)) in current_ids[self.window]]
             else:
-                await asyncio.sleep(0.005)
+                await sleep(0.005)
 
     def move_left(self,evt):
         self.x = -1
@@ -263,7 +267,7 @@ class Player:
         deleted_lines = []
         xy = windows[self.window].keys()
         y_values = [y for (x,y) in xy]
-        counter = collections.Counter(y_values)
+        counter = Counter(y_values)
         tmp_window = {}
         # collect all lines that need to be deleted
         for line in counter.keys():
@@ -271,6 +275,8 @@ class Player:
                 deleted_lines.append(line)
         deleted_lines = sorted(deleted_lines)
         length = len(deleted_lines)
+        if length > 0:
+            playsound("sounds/line-remove.mp3",block=False)
         self.lines += int(length*(length+1)/2)
         scores[self.window] = self.lines
         for line in deleted_lines:
@@ -321,11 +327,12 @@ async def update():
     while True:
         game.tk.update_idletasks()
         game.tk.update()
-        await asyncio.sleep(0.01)
+        await sleep(0.01)
 
 async def decide_winner():
     global text, done
     while True:
+        orig = game.running
         if all(done):
             msg = "{} has won!"
             if scores[0] == scores[1]:
@@ -334,24 +341,28 @@ async def decide_winner():
                 winner = player1.name if scores[0] > scores[1] else player2.name
             text = await canvas.create_text(700,500,text=msg.format(winner),font=("Calibri",50))
             game.running = False
-            await asyncio.sleep(10)
+            await sleep(10)
             loop.stop()
-            sys.exit(0)
 
-        await asyncio.sleep(0.02)
+        await sleep(0.02)
+
+async def play_music():
+    while True:
+        playsound("sounds/Tetris.mp3",block=False)
+        await sleep(245)
 
 if __name__ =="__main__":
-    if len(sys.argv) != 3:
+    if len(argv) != 3:
         print("Usage:python game.py player1_name player2_name")
-        sys.exit(1)
+        exit(1)
     blocks = Blocks()
     game = Game(blocks)
     canvas = game.canvas
-    name1 = sys.argv[1]
-    name2 = sys.argv[2]
+    name1 = argv[1]
+    name2 = argv[2]
     player1 = Player1(name1)
     player2 = Player2(name2)
-    loop = asyncio.get_event_loop()
+    loop = get_event_loop()
     loop.run_until_complete(draw_windows())
     loop.create_task(player1.play())
     loop.create_task(player2.play())
@@ -359,4 +370,5 @@ if __name__ =="__main__":
     loop.create_task(player2.drop())
     loop.create_task(update())
     loop.create_task(decide_winner())
+    loop.create_task(play_music())
     loop.run_forever()
