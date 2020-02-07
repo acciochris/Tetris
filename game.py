@@ -38,6 +38,7 @@ class Game:
         self.tk.resizable(0, 0)
         self.tk.wm_attributes("-topmost", 1)
         self.canvas = AsyncCanvas(self.tk, width=1500, height=1000, highlightthickness=0)
+        self.tk.iconbitmap("data/icon.ico")
         self.canvas.pack()
         self.tk.update()
         self.canvas_height = 400
@@ -50,14 +51,14 @@ class Game:
 
     def start(self,evt):
         global text,current_blocks,current_ids,windows,scores
-        playsound("sounds/start.mp3",block=False)
+        playsound("data/start.mp3",block=False)
         self.running = True
         self.canvas.delete(text)
         text = None
 
     def stop(self,evt):
         if self.running:
-            playsound("sounds/pause.mp3",block=False)
+            playsound("data/pause.mp3",block=False)
             self.running = False
         else:
             loop.stop()
@@ -109,7 +110,7 @@ class Player:
                     await self.show_score()
                     status = self.check()
                     if status:
-                        playsound("sounds/gameover.mp3",block=False)
+                        playsound("data/gameover.mp3",block=False)
                         canvas.delete(*ids)
                         self.lines = 0
                         done[self.window] = True
@@ -190,7 +191,7 @@ class Player:
             
             if self.rotate == 1:
                 self.rotate = 0
-                playsound("sounds/block-rotate.mp3",block=False)
+                playsound("data/block-rotate.mp3",block=False)
                 ref = current_ids[self.window][0][1]
                 
                 # Calculate the new position based on the reference point
@@ -238,7 +239,7 @@ class Player:
                     # await sleep(0.01)
                     # check if hit bottom
                     if windows[self.window].get((x,y+1)) or y == 19:
-                        playsound("sounds/drop.mp3",block=False)
+                        playsound("data/drop.mp3",block=False)
                         self.dropping = False
                         self.final_pos = {(x,y):id for (id, (x,y)) in current_ids[self.window]}
                         break
@@ -276,7 +277,7 @@ class Player:
         deleted_lines = sorted(deleted_lines)
         length = len(deleted_lines)
         if length > 0:
-            playsound("sounds/line-remove.mp3",block=False)
+            playsound("data/line-remove.mp3",block=False)
         self.lines += int(length*(length+1)/2)
         scores[self.window] = self.lines
         for line in deleted_lines:
@@ -348,7 +349,7 @@ async def decide_winner():
 
 async def play_music():
     while True:
-        playsound("sounds/Tetris.mp3",block=False)
+        playsound("data/Tetris.mp3",block=False)
         await sleep(245)
 
 if __name__ =="__main__":
