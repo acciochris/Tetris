@@ -39,7 +39,7 @@ class Game:
         self.tk.resizable(0, 0)
         self.tk.wm_attributes("-topmost", 1)
         self.canvas = AsyncCanvas(self.tk, width=1500, height=1000, highlightthickness=0)
-        # self.tk.iconbitmap(os.path.abspath("data/icon.ico"))
+        self.tk.iconbitmap("data/icon.ico")
         self.canvas.pack()
         self.tk.update()
         self.running = False
