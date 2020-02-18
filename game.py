@@ -5,6 +5,7 @@ from collections import namedtuple, Counter
 from asyncio import sleep, get_event_loop
 from itertools import cycle
 from playsound import playsound
+import os
 
 colors = ["red","green","blue","yellow"]
 current_blocks = [None,None]
@@ -38,11 +39,9 @@ class Game:
         self.tk.resizable(0, 0)
         self.tk.wm_attributes("-topmost", 1)
         self.canvas = AsyncCanvas(self.tk, width=1500, height=1000, highlightthickness=0)
-        self.tk.iconbitmap("data/icon.ico")
+        # self.tk.iconbitmap(os.path.abspath("data/icon.ico"))
         self.canvas.pack()
         self.tk.update()
-        self.canvas_height = 400
-        self.canvas_width = 1500
         self.running = False
         self.blocks = blocks
         # bind start and stop
@@ -352,7 +351,7 @@ async def play_music():
         playsound("data/Tetris.mp3",block=False)
         await sleep(245)
 
-if __name__ =="__main__":
+if __name__ == "__main__":
     blocks = Blocks()
     game = Game(blocks)
     canvas = game.canvas
