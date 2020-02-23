@@ -1,6 +1,6 @@
 from asynctk import *
+from _tkinter import TclError
 from random import randrange
-from sys import argv
 from collections import namedtuple, Counter
 from asyncio import sleep, get_event_loop
 from itertools import cycle
@@ -39,7 +39,7 @@ class Game:
         self.tk.resizable(0, 0)
         self.tk.wm_attributes("-topmost", 1)
         self.canvas = AsyncCanvas(self.tk, width=1500, height=1000, highlightthickness=0)
-        self.tk.iconbitmap("data/icon.ico")
+        # self.tk.iconbitmap("data/icon.ico")
         self.canvas.pack()
         self.tk.update()
         self.running = False
@@ -325,8 +325,11 @@ async def draw_windows():
 
 async def update():
     while True:
-        game.tk.update_idletasks()
-        game.tk.update()
+        try:
+            game.tk.update_idletasks()
+            game.tk.update()
+        except TclError:
+            loop.stop()
         await sleep(0.01)
 
 async def decide_winner():
@@ -368,4 +371,7 @@ if __name__ == "__main__":
     loop.create_task(update())
     loop.create_task(decide_winner())
     loop.create_task(play_music())
-    loop.run_forever()
+    try:
+        loop.run_forever()
+    except KeyboardInterrupt:
+        loop.stop()
