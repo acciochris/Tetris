@@ -1,3 +1,5 @@
+#/usr/bin/env python3
+
 from asynctk import *
 from _tkinter import TclError
 from random import randrange
@@ -391,10 +393,7 @@ async def play_music():
         playsound("data/Tetris.mp3", block=False)
         await sleep(245)
 
-<<<<<<< HEAD
-=======
 
->>>>>>> Rearrange code according to pep8.
 if __name__ == "__main__":
     blocks = Blocks()
     game = Game(blocks)
